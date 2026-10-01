@@ -1,23 +1,23 @@
 # State
 
-**Scenario:** none open yet. `world` is provisioned, `app` does not exist.
-**Status:** blocked on the DigitalOcean droplet limit (3, all used). Lazar is raising it.
+**Scenario:** 01 — The world is already calling. **Open since 2026-10-01 12:09 UTC.**
+**Status:** red. Traffic is hitting the `app` droplet on 8080 and getting connection refused.
 **Updated:** 2026-10-01
 
-## Done
+## Where things stand
 
-- `world` droplet created, provisioned: Prometheus (remote write on), Grafana + "world · black box"
-  dashboard, k6 2.3, runner unit installed and enabled, firewall. Pipeline smoke-tested end to end.
-- `world/README.md` "What's running", `world/cheatsheet.md`.
-- Private access notes written (IPs, Grafana login) in Lazar's context folder.
+- `world`: provisioned, profile `01/health.js` running as `k6-profile`, "world · black box" dashboard
+  live. Both SLO stats red.
+- `app`: exists, bare Ubuntu 24.04, only sshd listening. Lazar's box from here on.
+- Card: `labs/01/card.md`. Soft cap: two weeks, so around 2026-10-15.
 
 ## Next
 
-1. Lazar raises the droplet limit (ask for 6). Claude creates `app` (`s-1vcpu-1gb`, FRA1, both keys).
-2. Claude sets `APP_HOST` in `/etc/world.env`, links profile 01 as `current.js`, starts
-   `k6-profile`, updates `/srv/world/state.json`. The "01 · exists" panel goes red.
-3. Scenario 01 is open. Lazar reads `labs/01/card.md`.
+Lazar: read the card, write the HTTP server and the one-handler app, deploy under systemd, watch the
+panel turn green. Then 24 h green, Claude's attack, ADR, log, screenshot, lifecycle section.
+
+Claude: nothing until asked for numbers or until the panel has been green 24 h.
 
 ## Blockers
 
-Droplet limit.
+None.
