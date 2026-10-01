@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+  # White-box metrics from the app arrive in scenario 03. Lazar builds the endpoint; this scrapes it
+  # over the private network. Uncomment and set the private IP and port then.
+  # - job_name: app
+  #   static_configs:
+  #     - targets: ['APP_PRIVATE_IP:9100']

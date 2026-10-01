@@ -1,0 +1,15 @@
+[Unit]
+Description=backend-labs k6 traffic profile (current.js)
+After=network-online.target prometheus.service
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/world.env
+Environment=K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write
+Environment=K6_PROMETHEUS_RW_TREND_STATS=p(50),p(95),p(99),max
+ExecStart=/usr/bin/k6 run --quiet --out experimental-prometheus-rw /srv/world/profiles/current.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
