@@ -15,7 +15,7 @@ else is a 404. Next scenario the app grows a router and a database and the serve
 
 ## Numbers
 
-Current traffic profile (`world/profiles/week-01/health.js`):
+Current traffic profile (`world/profiles/01/health.js`):
 
 | Request | Rate | Target |
 |---|---|---|
@@ -37,7 +37,7 @@ Error budget: 0.1% of requests may fail (non-200 on `/health`, connection error,
   long an idle keep-alive connection lives, how many connections you accept at once.
 - Deploy by hand: build locally, copy the binary, run it under systemd so it survives a reboot. No
   containers, no CI, no Makefile that hides what happens.
-- Plain HTTP on 8080. TLS comes later.
+- Plain HTTP on 8080. TLS arrives in scenario 10, at the load balancer.
 
 ## Done when
 
@@ -51,7 +51,7 @@ Error budget: 0.1% of requests may fail (non-200 on `/health`, connection error,
   out of file descriptors.
 - `docs/request-lifecycle.md` has the HTTP server section filled in.
 
-## The operator will
+## Claude will
 
 - Run `health.js` from `world` continuously from the moment the scenario opens.
 - On verification day, against the live server: a request line with no HTTP version, a header line

@@ -5,9 +5,10 @@ time.
 
 I run production systems on top of all of this already: load balancers, connection pools, caches,
 queues, Postgres under contention, Kubernetes. This is a side project to build the layer underneath by
-hand, for fun and for depth. The HTTP server on raw TCP, the router, the pool, the cache, the load
-balancer, the queue, the rate limiter, a small key-value store. Standard library for primitives only
-(sockets, buffers, JSON, TLS) plus a Postgres driver. No frameworks, no AI.
+hand, for fun and for depth. The HTTP server on raw TCP, the router, the pool, the Postgres driver, the
+cache, the load balancer, the queue, the rate limiter, a small key-value store, the deploy tool, even a
+toy container runtime. Standard library for primitives only: sockets, buffers, JSON, TLS. No frameworks,
+no AI.
 
 A second server generates traffic 24/7 and things go wrong on purpose. Each time, I find the cause,
 fix it properly, and write down what I decided and what I rejected.
@@ -24,13 +25,14 @@ codes, latency as measured by the client. Anything the app knows about itself, I
 
 One scenario is open at a time:
 
-1. Claude writes a card in `labs/week-NN/card.md` describing what's happening and what "fixed" looks
+1. Claude writes a card in `labs/NN/card.md` describing what's happening and what "fixed" looks
    like in numbers, then changes the traffic. Usually something on the dashboard goes red.
 2. I dig in, read, design, build, deploy. If I'm stuck Claude asks questions or points me at things to
    read. It doesn't tell me the answer.
 3. When the scenario's panel has been green for 24 hours, Claude tries to break what I built and reviews
    the design.
-4. I write the ADR and the lab log, commit, and the next card arrives.
+4. I fix whatever the attack found that the card asked for, write the ADR and the lab log, commit, and
+   the next card arrives. Findings outside the card go to `.claude/backlog.md`.
 
 No fixed schedule. Work hours and evenings when I have time. If a scenario drags past two weeks I scope
 it down, note what I skipped, and move on.
@@ -45,7 +47,8 @@ it down, note what I skipped, and move on.
   Kubernetes, and the measuring stick on `world` (Prometheus, Grafana, k6). Kubernetes is where I stop
   building and learn to run things instead. The measuring stick stays independent or the numbers mean
   nothing.
-- Side quests are fine if they're bounded. Writing a database engine is not bounded, so no.
+- Side quests are fine if they're bounded. A key-value store with a log and a hash index is bounded.
+  A relational engine to hold orders is not, so orders stay in Postgres.
 - No AI anywhere near `app/`. No completion, no generated code, no "fix this". Docs, books and library
   source are fine. Stack Overflow after I've been stuck for 20 minutes.
 - Claude never touches app code. It writes cards, traffic profiles, chaos scripts and reviews, and tells
@@ -62,15 +65,17 @@ Products with stock, a cart, checkout, orders. Postgres.
 When it gets built: scenario 01 is the HTTP server, a package that accepts connections, parses
 requests and hands them to a handler, plus an app of exactly one handler so `/health` answers. The
 server knows nothing about routes. Scenario 02 is the store itself: the router, the five endpoints,
-the schema, migrations, Postgres. Nothing more is added until a later scenario asks for it. On top of steady browsing traffic there'll be "drops": a product with
-limited stock going on sale at a set time so everyone shows up at once. Both kinds of traffic matter,
-some problems only show up when they overlap.
+the schema, migrations, Postgres. Nothing more is added until a later scenario asks for it.
+
+On top of steady browsing traffic there'll be "drops": a product with limited stock going on sale at a
+set time so everyone shows up at once. Both kinds of traffic matter, some problems only show up when
+they overlap.
 
 ## Scenarios
 
-The order is driven by need. A component shows up in the week its absence starts to hurt.
+The order is driven by need. A component shows up in the scenario where its absence starts to hurt.
 
-| # | Scenario | What it's about | Built that week |
+| # | Scenario | What it's about | Built |
 |---|---|---|---|
 | 01 | The world is already calling | TCP, HTTP/1.1 parsing, keep-alive, timeouts, deploying by hand | HTTP server |
 | 02 | It's supposed to be a store | Project layout, routing, Postgres, migrations | Router, middleware, config, migrations |
@@ -81,8 +86,8 @@ The order is driven by need. A component shows up in the week its absence starts
 | 07 | Thundering herd on the hot product | Caching, TTLs, stampedes, coalescing | In-process cache |
 | 08 | One instance isn't enough | Multiple instances, cache coherence, health checks | Load balancer v1 |
 | 09 | Backends come and go | Discovery, heartbeats, membership, stale entries | Service registry |
-| 10 | Deploy during a drop | Zero downtime, readiness vs liveness, draining, rollback | Deploy tool, load balancer v2 |
-| 11 | Shared cache (two weeks) | Append-only logs, hash index, fsync, crash recovery, compaction | Bitcask-style KV store |
+| 10 | Deploy during a drop | Zero downtime, readiness vs liveness, draining, rollback, TLS termination | Deploy tool, load balancer v2 |
+| 11 | Shared cache (the big one, cap doubled) | Append-only logs, hash index, fsync, crash recovery, compaction | Bitcask-style KV store |
 | 12 | Shared cache, served | Wire protocol, TTL, eviction across instances | Cache server on top of it |
 | 13 | The cache node died | Leader and follower, log shipping, catch-up, failover without consensus | KV replication |
 | 14 | Payment provider gets slow | Timeouts, circuit breakers, bulkheads, fallbacks | |
@@ -112,14 +117,15 @@ Each scenario leaves something the next one needs, or breaks something the previ
   Owning pool and driver is what makes the concurrency bug in 06 fully debuggable.
 - **07 → 08 → 09 → 10.** The herd forces a cache. The cache helps until one instance isn't enough.
   A second instance needs a load balancer, which needs to know its backends, which is the registry.
-  Now there's something to deploy to without downtime, so the deploy tool and draining come next.
+  Now there's something to deploy to without downtime, so the deploy tool and draining come next, and
+  since every request passes the balancer anyway, TLS terminates there.
 - **11 → 12 → 13.** Two instances with two separate caches has been wrong since 08. Fixing it needs a
   shared store: the KV store first, then a server on top of it, then a replica because a single shared
   cache is now a single point of failure.
 - **14 → 15.** Payments get added and the provider is slow. Timeouts and breakers help, but checkout is
   still synchronous on a slow call, so it moves behind a queue.
-- **16 → 19.** Search arrives as a feature, then the database becomes the problem from four directions:
-  bad queries, analytics load, read volume, failover.
+- **16 → 19.** Search arrives as a feature and gets its own index instead of leaning on Postgres. Then
+  the database becomes the problem from three directions: analytics load, read volume, failover.
 - **20 → 21.** Bots force rate limiting. Background work left behind by abandoned carts forces a
   scheduler that doesn't fight live traffic.
 - **22 → 25.** Build a toy container runtime so Kubernetes isn't magic, then move onto Kubernetes, then
@@ -133,11 +139,12 @@ Roughly 30 weeks of work if I did one a week. I won't, so it'll take longer.
 | Path | Whose | What |
 |---|---|---|
 | `app/` | me | The store and every component. No AI touches this. |
-| `docs/request-lifecycle.md` | me | One request traced end to end, a row per component |
-| `labs/week-NN/adr.md`, `log.md`, `metrics.png` | me | Decision record, lab log, dashboard screenshot |
-| `labs/week-NN/card.md` | Claude | The scenario |
+| `docs/request-lifecycle.md` | me | One request traced end to end, a section per step |
+| `labs/NN/adr.md`, `log.md`, `metrics.png` | me | Decision record, lab log, dashboard screenshot |
+| `labs/NN/card.md` | Claude | The scenario |
 | `labs/_templates/` | Claude | Blank ADR and log |
 | `world/` | Claude | Provisioning, dashboards, k6 profiles, chaos scripts, fake payment provider |
+| `.claude/` | both | Project context, current state, backlog, Claude's operating rules |
 | the READMEs | both | |
 
 Claude's commits are authored as `world (Claude)`, mine as me, so `git log --author` separates the two
@@ -151,5 +158,4 @@ on purpose so I hit limits early. I deploy to it by hand until a scenario makes 
 
 ## Status
 
-Planning. Scenario 01 opens when `world` starts sending traffic to an `app` droplet that doesn't answer
-yet.
+Lives in [`.claude/state.md`](.claude/state.md).

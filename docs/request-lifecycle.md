@@ -9,7 +9,7 @@ scenario.
 | Step | Built in |
 |---|---|
 | DNS resolves `app` | not built, by decision |
-| TCP connect, TLS handshake | `crypto/tls`, not built, by decision |
+| TCP connect, TLS handshake | TCP is the OS. TLS is `crypto/tls` at the load balancer, 10 |
 | Load balancer picks a backend from the registry | 08, 09, 10 |
 | HTTP server accepts the connection, parses the request | 01 |
 | Rate limiter admits or rejects | 20 |
@@ -22,6 +22,7 @@ scenario.
 | Transaction: check stock, decrement, insert order | 02, then 06 |
 | Job enqueued for payment | 15 |
 | Response written, metrics recorded | 01, 03 |
+| Where the process runs: systemd, then a container, then a pod | 01, 22, 23 |
 
 ## Steps
 
@@ -34,8 +35,8 @@ Not built. A domain pointed at the `app` droplet. Nothing to learn here that a s
 
 ### TCP and TLS
 
-TCP is the `net` package, the OS does the work. TLS is `crypto/tls` with a Let's Encrypt cert. Writing
-TLS is cryptography, not backend engineering.
+TCP is the `net` package, the OS does the work. TLS is `crypto/tls` with a Let's Encrypt cert,
+terminated at the load balancer from scenario 10. Writing TLS is cryptography, not backend engineering.
 
 ### Load balancer and registry
 
@@ -43,10 +44,7 @@ Scenarios 08, 09 and 10.
 
 ### HTTP server
 
-Scenario 01. Mine, on a raw `net` TCP listener. Accepts connections, reads bytes, parses the request
-line and headers, handles `Content-Length` and keep-alive, writes responses, enforces read and idle
-timeouts so a slow client can't hold a connection forever. HTTP/1.1 only, no HTTP/2. TLS is
-`crypto/tls` wrapped around the listener.
+Scenario 01.
 
 ### Rate limiter
 
@@ -87,3 +85,7 @@ Scenario 15.
 ### Response and metrics
 
 Scenarios 01 and 03.
+
+### Where the process runs
+
+Scenario 01 under systemd, 22 inside a container I built, 23 as a pod.

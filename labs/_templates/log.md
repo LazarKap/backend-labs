@@ -12,7 +12,7 @@ Chronological, dead ends included. Each: what I changed, what I expected, what t
 
 Final numbers against the card's "done when".
 
-## Operator findings
+## What Claude found
 
 What the attack found. Fixed now vs pushed to backlog.
 

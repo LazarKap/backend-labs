@@ -21,4 +21,4 @@ What this costs or constrains going forward. What becomes harder. What I'd revis
 
 ## Evidence
 
-Before and after under the operator's load. Link `log.md` and `metrics.png`.
+Before and after under load. Link `log.md` and `metrics.png`.

@@ -10,7 +10,7 @@ Nobody is going to stop the traffic while you build. Make them green.
 
 ## Numbers
 
-Current traffic profile (`world/profiles/week-02/steady.js`):
+Current traffic profile (`world/profiles/02/steady.js`):
 
 | Endpoint | Rate | Target |
 |---|---|---|
@@ -34,6 +34,7 @@ Catalogue: 20 products. One of them, `drop-001`, has stock 100 and is not specia
 - Checkout buys whatever is in the cart, decrements stock, creates an order, empties the cart. Stock is
   checked. Nothing is said here about what happens when two people check out at the same moment.
 - Postgres runs on the `app` droplet. Migrations are plain SQL files applied by your own code or script.
+- The listen address and the Postgres connection details come from outside the binary. How is your call.
 - Deploy by hand: build locally, copy the binary, run it under systemd. No containers, no CI, no Make
   targets that hide what happens.
 - `/health` returns 200 only when the app can actually serve a request, which includes reaching Postgres.
@@ -48,7 +49,7 @@ Catalogue: 20 products. One of them, `drop-001`, has stock 100 and is not specia
   the schema is shaped as it is.
 - `docs/request-lifecycle.md` has the router, middleware, handler and transaction sections filled in.
 
-## The operator will
+## Claude will
 
 - Run `steady.js` from `world` continuously from the moment the scenario opens.
 - On verification day: send malformed JSON, unknown product ids, negative quantities, a checkout with an
