@@ -59,9 +59,10 @@ it down, note what I skipped, and move on.
 
 Products with stock, a cart, checkout, orders. Postgres.
 
-When it gets built: scenario 01 is the HTTP server only, living in `app/` and answering `/health`.
-Scenario 02 is the store itself on top of that server: the five endpoints, the schema, migrations,
-Postgres. Nothing more is added until a later scenario asks for it. On top of steady browsing traffic there'll be "drops": a product with
+When it gets built: scenario 01 is the HTTP server, a package that accepts connections, parses
+requests and hands them to a handler, plus an app of exactly one handler so `/health` answers. The
+server knows nothing about routes. Scenario 02 is the store itself: the router, the five endpoints,
+the schema, migrations, Postgres. Nothing more is added until a later scenario asks for it. On top of steady browsing traffic there'll be "drops": a product with
 limited stock going on sale at a set time so everyone shows up at once. Both kinds of traffic matter,
 some problems only show up when they overlap.
 

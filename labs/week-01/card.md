@@ -6,7 +6,12 @@ Traffic has been hitting `http://<app-ip>:8080/health` every few seconds since t
 refused, every time. The dashboard on `world` has one panel and it's red.
 
 There's no app. There's no HTTP server. There's a bare Ubuntu box with your SSH key on it. Make the
-panel green, and do it with a server you wrote, not one you imported.
+panel green, with a server you wrote, not one you imported.
+
+Two things get built this scenario and they are not the same thing. The HTTP server: accepts
+connections, parses requests, hands each one to whatever is plugged in, writes the response back. It
+knows nothing about `/health`. And the app: this week it is one handler, `/health` says ok, anything
+else is a 404. Next scenario the app grows a router and a database and the server doesn't change.
 
 ## Numbers
 
@@ -25,6 +30,9 @@ Error budget: 0.1% of requests may fail (non-200 on `/health`, connection error,
   packages at all this scenario.
 - HTTP/1.1. Requests arrive with and without `Connection: keep-alive`. Some have a body with a
   `Content-Length`. Chunked request bodies can be rejected with a 411, that's fine for now.
+- The server is a package the app imports, not a program that happens to contain the app. The
+  boundary between them, what a handler receives and what it returns, is yours to design and is the
+  first thing the ADR has to cover.
 - Timeouts are yours to choose and justify: how long a client may take to send a request line, how
   long an idle keep-alive connection lives, how many connections you accept at once.
 - Deploy by hand: build locally, copy the binary, run it under systemd so it survives a reboot. No
@@ -38,8 +46,9 @@ Error budget: 0.1% of requests may fail (non-200 on `/health`, connection error,
 - `go test ./...` and `go vet ./...` are clean. There are tests for the parser: request line, headers,
   `Content-Length` bodies, a request split across two reads, a request with garbage in it.
 - `app/README.md` says how to build, run, and deploy.
-- `adr.md` covers at least: how connections are accepted and handed off, how a request is parsed, the
-  timeouts you chose and why, what happens when the box runs out of file descriptors.
+- `adr.md` covers at least: the boundary between server and handler, how connections are accepted and
+  handed off, how a request is parsed, the timeouts you chose and why, what happens when the box runs
+  out of file descriptors.
 - `docs/request-lifecycle.md` has the HTTP server section filled in.
 
 ## The operator will
