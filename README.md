@@ -97,6 +97,31 @@ The order is driven by need. A component shows up in the week its absence starts
 | 27 | Incident week | Something breaks without warning. Run it, write the postmortem | |
 | 28 | Wrap up | Finish the lifecycle doc, load report, maybe a blog post | |
 
+### How they chain
+
+Each scenario leaves something the next one needs, or breaks something the previous one built.
+
+- **01 → 02 → 03.** The server exists, so the store can be built on it. The store exists, so there's
+  something worth measuring. After 03 every later scenario is diagnosed on my own metrics.
+- **04 → 05 → 06.** The surge exposes the database connection as the bottleneck, so the pool gets
+  built. With my own pool I'm one layer away from the wire, so the driver follows and `pgx` goes.
+  Owning pool and driver is what makes the concurrency bug in 06 fully debuggable.
+- **07 → 08 → 09 → 10.** The herd forces a cache. The cache helps until one instance isn't enough.
+  A second instance needs a load balancer, which needs to know its backends, which is the registry.
+  Now there's something to deploy to without downtime, so the deploy tool and draining come next.
+- **11 → 12 → 13.** Two instances with two separate caches has been wrong since 08. Fixing it needs a
+  shared store: the KV store first, then a server on top of it, then a replica because a single shared
+  cache is now a single point of failure.
+- **14 → 15.** Payments get added and the provider is slow. Timeouts and breakers help, but checkout is
+  still synchronous on a slow call, so it moves behind a queue.
+- **16 → 19.** Search arrives as a feature, then the database becomes the problem from four directions:
+  bad queries, analytics load, read volume, failover.
+- **20 → 21.** Bots force rate limiting. Background work left behind by abandoned carts forces a
+  scheduler that doesn't fight live traffic.
+- **22 → 25.** Build a toy container runtime so Kubernetes isn't magic, then move onto Kubernetes, then
+  deal with what it does to the app under load, then with config and secrets inside it.
+- **26 → 28.** A second writer of stock, an incident with no warning, and the write-up.
+
 Roughly 30 weeks of work if I did one a week. I won't, so it'll take longer.
 
 ## Who writes where
