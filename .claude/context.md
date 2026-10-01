@@ -20,7 +20,11 @@ Portfolio value is a side effect: the ADRs, the lifecycle doc, and a verifiable 
 - **Not built:** TLS, DNS, TCP, Kubernetes, a relational engine for orders, and the measuring stick
   (Prometheus, Grafana, k6 on `world`). The last one has to stay independent or the numbers are
   meaningless.
-- **Bitcask-style KV store is in** (scenario 11, big one). Backs the cache server. Never holds orders.
+- **Cache server is in-memory first** (11), gets Bitcask-style persistence only when a cold restart
+  causes a stampede (12), then a replica (13). Persistence is never for its own sake. Never holds orders.
+- **Access model.** Claude is outside traffic only, never a shell on app boxes. In-box chaos is a fire
+  drill Lazar runs. Scenario 24 gives Claude a pods-delete-only kubeconfig, 27 a chaos user for a week.
+- **HTTP client is a built component** (14), since `net/http` is banned and payments need outbound calls.
 - **Store domain, not pure flash sale**: steady browsing plus drops, because some failures only appear
   when two traffic kinds overlap.
 - **Scenario-driven, no schedule.** Work hours and evenings as time allows. Two-week soft cap is the

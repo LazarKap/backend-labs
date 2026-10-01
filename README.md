@@ -73,37 +73,38 @@ they overlap.
 
 ## Scenarios
 
-The order is driven by need. A component shows up in the scenario where its absence starts to hurt.
+The order is driven by need. A component shows up in the scenario where its absence starts to hurt,
+and only there.
 
 | # | Scenario | What it's about | Built |
 |---|---|---|---|
-| 01 | The world is already calling | TCP, HTTP/1.1 parsing, keep-alive, timeouts, deploying by hand | HTTP server |
-| 02 | It's supposed to be a store | Project layout, routing, Postgres, migrations | Router, middleware, config, migrations |
-| 03 | We can't see anything | Percentiles, labels, cardinality, structured logs, a dashboard | Metrics endpoint, logger |
-| 04 | 10× surge at drop time | Pool sizing, indexes, timeouts, limits | Connection pool |
-| 05 | The last dependency | Postgres wire protocol, SCRAM auth, extended query, type decoding | Postgres driver, `pgx` removed |
-| 06 | Stock went negative | Transactions, isolation, locking, idempotency | |
-| 07 | Thundering herd on the hot product | Caching, TTLs, stampedes, coalescing | In-process cache |
-| 08 | One instance isn't enough | Multiple instances, cache coherence, health checks | Load balancer v1 |
-| 09 | Backends come and go | Discovery, heartbeats, membership, stale entries | Service registry |
-| 10 | Deploy during a drop | Zero downtime, readiness vs liveness, draining, rollback, TLS termination | Deploy tool, load balancer v2 |
-| 11 | Shared cache (the big one, cap doubled) | Append-only logs, hash index, fsync, crash recovery, compaction | Bitcask-style KV store |
-| 12 | Shared cache, served | Wire protocol, TTL, eviction across instances | Cache server on top of it |
+| 01 | The world is already calling | TCP, HTTP/1.1 parsing, keep-alive, timeouts, deploying by hand | HTTP server, a one-handler app |
+| 02 | It's supposed to be a store | Project layout, routing, schema, migrations, Postgres | Router, config, migrations |
+| 03 | We can't see anything | Request ids, structured logs, percentiles, labels, cardinality, a dashboard of my own | Middleware chain, metrics endpoint, logger |
+| 04 | 10× surge at drop time | What saturates first, pool sizing, backpressure, timeouts | Connection pool |
+| 05 | The last dependency | Postgres wire protocol, authentication, extended query, decoding | Postgres driver, `pgx` removed |
+| 06 | Stock went negative | Transactions, isolation, locking, idempotent checkout | |
+| 07 | Thundering herd on the hot product | Hot keys, TTLs, expiry stampedes, what not to cache | In-process cache |
+| 08 | One instance isn't enough | A second app box, balancing, health checks, two caches that now disagree | Load balancer v1 |
+| 09 | Deploy during a drop | Graceful shutdown, draining, readiness vs liveness, rollback, TLS termination | Deploy tool, load balancer v2 |
+| 10 | Backends come and go | A crashed instance kept getting traffic, a new one got none. Heartbeats, TTLs, membership | Service registry |
+| 11 | Every instance misses alone | Shared cache, wire protocol, TTL, eviction | Cache server, in memory |
+| 12 | The cache node restarted cold | Cold start stampede, append-only log, hash index, fsync, recovery, compaction. Cap doubled | Bitcask-style persistence |
 | 13 | The cache node died | Leader and follower, log shipping, catch-up, failover without consensus | KV replication |
-| 14 | Payment provider gets slow | Timeouts, circuit breakers, bulkheads, fallbacks | |
-| 15 | Checkout takes too long | Async work, acks, retries, dead letters, graceful shutdown | Durable queue, worker |
-| 16 | Search is slow | Tokenising, inverted index, ranking, index updates on stock change | Search index |
-| 17 | The reporting query | Prod vs analytics load, statement timeouts, isolating workloads | |
-| 18 | Reads drown writes | Read replica, read/write split, invalidation | |
-| 19 | Database fails over | Reconnect storms, backoff, jitter, retry budgets | |
-| 20 | Abuse and bots | Rate limiting, per-user limits, backpressure, what 429 means | Rate limiter |
-| 21 | Carts pile up | Background jobs vs live traffic, batching, scheduling | Job scheduler |
+| 14 | Payment provider gets slow | Payments arrive. Outbound calls, timeouts, circuit breakers, bulkheads | HTTP client, circuit breaker |
+| 15 | Checkout takes too long | 202 and order states, stock reservation and release, acks, retries, dead letters | Job queue, worker |
+| 16 | The catalog grew | 200k products. Listing without pagination dies, search arrives, tokenising, inverted index | Pagination, search index |
+| 17 | The reporting endpoint | Ops hits sales-by-hour every minute. Statement timeouts, isolating workloads | |
+| 18 | Reads drown writes | Streaming replica, read/write split in the pool, replication lag | |
+| 19 | Database fails over | Fire drill I run: kill the primary, promote. Reconnect storms, backoff, retry budgets | |
+| 20 | Abuse and bots | Rate limiting with counters shared across instances, backpressure, 429 semantics | Rate limiter |
+| 21 | Reservations and carts pile up | Expiring reservations from 15, abandoned carts, batch jobs vs live traffic | Job scheduler |
 | 22 | What's in a container | Namespaces, cgroups, rootfs, what Docker actually does | Mini container runtime |
-| 23 | Move it to Kubernetes | k3s or a managed cluster, deployments, services, probes. My LB vs an ingress | |
-| 24 | Pods die, node is full | Autoscaling under load, limits, disruption budgets | |
-| 25 | Config and secrets | Rotation without restarts, reload semantics | |
-| 26 | The warehouse feed | Stock changing from a second source while people buy | |
-| 27 | Incident week | Something breaks without warning. Run it, write the postmortem | |
+| 23 | Move it to Kubernetes | A cluster. What the platform now does that I built: balancer, registry, deploy tool. Keep or drop each | |
+| 24 | Pods die, node is full | Claude gets a kubeconfig that can only delete pods. Autoscaling, limits, disruption budgets | |
+| 25 | Config and secrets | Rotation without restarts, reload semantics, internal endpoints get secrets | |
+| 26 | The warehouse feed | A second writer of stock, from outside, while people buy | |
+| 27 | Incident week | Claude gets a chaos user for a week. Run it, write the postmortem | |
 | 28 | Wrap up | Finish the lifecycle doc, load report, maybe a blog post | |
 
 ### How they chain
@@ -111,28 +112,48 @@ The order is driven by need. A component shows up in the scenario where its abse
 Each scenario leaves something the next one needs, or breaks something the previous one built.
 
 - **01 → 02 → 03.** The server exists, so the store can be built on it. The store exists, so there's
-  something worth measuring. After 03 every later scenario is diagnosed on my own metrics.
-- **04 → 05 → 06.** The surge exposes the database connection as the bottleneck, so the pool gets
-  built. With my own pool I'm one layer away from the wire, so the driver follows and `pgx` goes.
-  Owning pool and driver is what makes the concurrency bug in 06 fully debuggable.
-- **07 → 08 → 09 → 10.** The herd forces a cache. The cache helps until one instance isn't enough.
-  A second instance needs a load balancer, which needs to know its backends, which is the registry.
-  Now there's something to deploy to without downtime, so the deploy tool and draining come next, and
-  since every request passes the balancer anyway, TLS terminates there.
-- **11 → 12 → 13.** Two instances with two separate caches has been wrong since 08. Fixing it needs a
-  shared store: the KV store first, then a server on top of it, then a replica because a single shared
-  cache is now a single point of failure.
-- **14 → 15.** Payments get added and the provider is slow. Timeouts and breakers help, but checkout is
-  still synchronous on a slow call, so it moves behind a queue.
-- **16 → 19.** Search arrives as a feature and gets its own index instead of leaning on Postgres. Then
-  the database becomes the problem from three directions: analytics load, read volume, failover.
-- **20 → 21.** Bots force rate limiting. Background work left behind by abandoned carts forces a
-  scheduler that doesn't fight live traffic.
-- **22 → 25.** Build a toy container runtime so Kubernetes isn't magic, then move onto Kubernetes, then
-  deal with what it does to the app under load, then with config and secrets inside it.
+  something worth seeing, and a middleware chain finally has things to hold: ids, logs, timings,
+  metrics. From 03 on, every scenario is diagnosed on my own numbers next to Claude's.
+- **04 → 05 → 06.** The surge shows what saturates first, and connections to Postgres are near the
+  top, so the pool gets built. Owning the pool puts me one layer from the wire, so the driver follows
+  and `pgx` goes. Owning both is what makes the concurrency bug in 06 fully debuggable.
+- **07 → 08.** The drop makes one product a hot key and the cache fixes it, until one box isn't
+  enough. A second app box needs a balancer. Now there are two caches, and they disagree about stock.
+- **09 → 10.** There's something to deploy to without downtime, so the app learns to shut down
+  cleanly, the balancer learns to drain, the deploy tool drives both, and since every request passes
+  the balancer anyway, TLS terminates there. Then an instance crashes and the balancer keeps routing
+  to it, so membership stops being a static list.
+- **11 → 12 → 13.** Each instance misses alone, so the drop stampedes Postgres once per instance. A
+  shared cache fixes that and becomes the home for shared state later scenarios need. Then it
+  restarts empty and the stampede is back, so it learns to persist. Then it dies and persistence
+  isn't enough, so it gets a replica.
+- **14 → 15.** Payments arrive, which means an outbound HTTP call, which means an HTTP client. The
+  provider is slow, breakers help, but checkout is still synchronous on a slow call, so it moves
+  behind a queue, and stock has to be reserved and released instead of just decremented.
+- **16 → 19.** The catalog grows and the database becomes the problem from four directions: listing
+  and search, a reporting endpoint, read volume, failover.
+- **20 → 21.** Bots force rate limiting, and the counters live in the shared cache from 11 because
+  there are two instances. Reservations from 15 and abandoned carts need expiring, so a scheduler
+  that doesn't fight live traffic.
+- **22 → 25.** Build a toy container runtime so Kubernetes isn't magic. Move onto Kubernetes and
+  decide, component by component, what the platform now does that I built. Then deal with what it
+  does to the app under load, and with config and secrets inside it.
 - **26 → 28.** A second writer of stock, an incident with no warning, and the write-up.
 
 Roughly 30 weeks of work if I did one a week. I won't, so it'll take longer.
+
+## Access and chaos
+
+Claude reaches the app only from the outside, as traffic. It never has a shell on an app box. So:
+
+- Anything the outside world can do, Claude does: traffic shapes, bots, a slow payment provider,
+  malformed requests, connection floods.
+- Anything that needs to happen inside a box is a fire drill. Claude writes the script into
+  `world/chaos/`, I run it when I choose. Scenario 19 is this.
+- Scenario 24: I give Claude a kubeconfig scoped to deleting pods and nothing else. Writing that role
+  is part of the scenario.
+- Scenario 27: Claude gets a chaos user on the app boxes for one week, with what it can do written
+  down beforehand. Revoked after.
 
 ## Who writes where
 
@@ -152,9 +173,13 @@ sides.
 
 ## Infrastructure
 
-Two DigitalOcean droplets. `world` (2 vCPU, 2 GB) has Prometheus, Grafana, k6 and later a fake payment
-provider. Claude sets it up. `app` (1 vCPU, 1 GB) is bare Ubuntu with Postgres and the store, kept small
-on purpose so I hit limits early. I deploy to it by hand until a scenario makes that painful.
+DigitalOcean. `world` (2 vCPU, 2 GB) has Prometheus, Grafana, k6 and later the fake payment provider.
+Claude sets it up and owns it. `app` (1 vCPU, 1 GB) starts as bare Ubuntu with Postgres and the store,
+kept small on purpose so I hit limits early. I deploy to it by hand until a scenario makes that painful.
+
+The app side grows as the scenarios demand it, and that's deliberate: a second app box and somewhere
+for the balancer to live in 08, a replica database in 18, a cluster in 23. Each one costs money and
+arrives only when the previous shape has actually broken.
 
 ## Status
 

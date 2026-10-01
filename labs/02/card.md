@@ -28,7 +28,7 @@ Catalogue: 20 products. One of them, `drop-001`, has stock 100 and is not specia
 ## Constraints
 
 - Your HTTP server from scenario 01, plus the standard library for primitives, plus `pgx`. Nothing
-  else. Routing and middleware are yours to write.
+  else. Routing is yours to write.
 - Exactly five endpoints plus `/health`. The user is the `X-User-ID` header. No auth, no images, no
   search, no categories, no admin, no pagination.
 - Checkout buys whatever is in the cart, decrements stock, creates an order, empties the cart. Stock is
@@ -45,9 +45,9 @@ Catalogue: 20 products. One of them, `drop-001`, has stock 100 and is not specia
   within target, error budget not exhausted.
 - `go test ./...` and `go vet ./...` are clean.
 - `app/README.md` says how to build, migrate, run, and deploy, and a stranger could do it.
-- `adr.md` covers at least: project layout, how routing and middleware are done, how migrations run, why
-  the schema is shaped as it is.
-- `docs/request-lifecycle.md` has the router, middleware, handler and transaction sections filled in.
+- `adr.md` covers at least: project layout, how routing is done, how migrations run, why the schema is
+  shaped as it is.
+- `docs/request-lifecycle.md` has the router, handler and transaction sections filled in.
 
 ## Claude will
 

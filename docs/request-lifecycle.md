@@ -14,12 +14,13 @@ scenario.
 | HTTP server accepts the connection, parses the request | 01 |
 | Rate limiter admits or rejects | 20 |
 | Router matches the route | 02 |
-| Middleware: request id, logging, timeout, metrics | 02, 03 |
+| Middleware: request id, logging, timeout, metrics | 03 |
 | Handler validates the body | 02 |
-| Cache lookup for the product | 07, then 12, 13 |
+| Cache lookup for the product | 07, then 11, 12, 13 |
 | Connection pool hands out a connection | 04 |
 | Driver speaks the Postgres protocol | 05 |
 | Transaction: check stock, decrement, insert order | 02, then 06 |
+| Outbound call to the payment provider | 14 |
 | Job enqueued for payment | 15 |
 | Response written, metrics recorded | 01, 03 |
 | Where the process runs: systemd, then a container, then a pod | 01, 22, 23 |
@@ -56,7 +57,7 @@ Scenario 02.
 
 ### Middleware
 
-Scenarios 02 and 03.
+Scenario 03.
 
 ### Handler and validation
 
@@ -64,7 +65,7 @@ Scenario 02.
 
 ### Cache
 
-Scenario 07, then 12 when it moves out of process, 13 when it gets a replica.
+Scenario 07, then 11 when it moves out of process, 12 when it persists, 13 when it gets a replica.
 
 ### Connection pool
 
@@ -77,6 +78,10 @@ Scenario 05.
 ### Transaction
 
 Scenario 02, revisited in 06.
+
+### Outbound call
+
+Scenario 14.
 
 ### Queue
 
