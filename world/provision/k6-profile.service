@@ -7,6 +7,8 @@ Wants=network-online.target
 EnvironmentFile=/etc/world.env
 Environment=K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write
 Environment=K6_PROMETHEUS_RW_TREND_STATS=p(50),p(95),p(99),max
+# drop high-cardinality labels (full url, full error string); error_code stays
+Environment=K6_SYSTEM_TAGS=proto,status,method,name,group,check,error_code,scenario,expected_response
 ExecStart=/usr/bin/k6 run --quiet --out experimental-prometheus-rw /srv/world/profiles/current.js
 Restart=always
 RestartSec=5

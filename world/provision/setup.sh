@@ -19,7 +19,7 @@ mkdir -p /srv/world/profiles
 if [ -d "$REPO/.git" ]; then git -C "$REPO" pull -q; else git clone -q https://github.com/LazarKap/backend-labs.git "$REPO"; fi
 
 # Prometheus: accept k6 remote write, keep 90 days
-sed -i 's|^ARGS=.*|ARGS="--web.enable-remote-write-receiver --storage.tsdb.retention.time=90d"|' /etc/default/prometheus
+sed -i 's|^ARGS=.*|ARGS="--web.enable-remote-write-receiver --web.enable-admin-api --storage.tsdb.retention.time=90d"|' /etc/default/prometheus
 install -m 644 "$REPO/world/provision/prometheus.yml" /etc/prometheus/prometheus.yml
 systemctl enable -q prometheus
 systemctl restart prometheus
