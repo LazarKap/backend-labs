@@ -57,8 +57,11 @@ it down, note what I skipped, and move on.
 
 ## The store
 
-Products with stock, a cart, checkout, orders. Postgres. Five endpoints in scenario 02 and nothing more
-until a scenario asks for it. On top of steady browsing traffic there'll be "drops": a product with
+Products with stock, a cart, checkout, orders. Postgres.
+
+When it gets built: scenario 01 is the HTTP server only, living in `app/` and answering `/health`.
+Scenario 02 is the store itself on top of that server: the five endpoints, the schema, migrations,
+Postgres. Nothing more is added until a later scenario asks for it. On top of steady browsing traffic there'll be "drops": a product with
 limited stock going on sale at a set time so everyone shows up at once. Both kinds of traffic matter,
 some problems only show up when they overlap.
 
