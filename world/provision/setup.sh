@@ -33,11 +33,13 @@ chown -R grafana:grafana /var/lib/grafana/dashboards
 systemctl enable -q grafana-server
 systemctl restart grafana-server
 if [ ! -f /root/.grafana-admin ]; then
-  PW=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | cut -c1-20)
-  echo "$PW" > /root/.grafana-admin; chmod 600 /root/.grafana-admin
-  for i in $(seq 1 20); do curl -fs localhost:3000/api/health >/dev/null && break; sleep 2; done
-  grafana-cli admin reset-admin-password "$PW" >/dev/null
+  openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | cut -c1-20 > /root/.grafana-admin
+  chmod 600 /root/.grafana-admin
 fi
+for i in $(seq 1 30); do curl -fs localhost:3000/api/health >/dev/null && break; sleep 2; done
+# reset every run so the stored password is always the live one
+grafana cli admin reset-admin-password "$(cat /root/.grafana-admin)" >/dev/null 2>&1 \
+  || grafana-cli admin reset-admin-password "$(cat /root/.grafana-admin)" >/dev/null 2>&1
 
 # k6 runner: runs whatever /srv/world/profiles/current.js points at, forever
 install -m 644 "$REPO/world/provision/k6-profile.service" /etc/systemd/system/k6-profile.service
