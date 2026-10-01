@@ -10,16 +10,17 @@ scenario.
 |---|---|
 | DNS resolves `app` | not built, by decision |
 | TCP connect, TLS handshake | `crypto/tls`, not built, by decision |
-| Load balancer picks a backend | 07, 08 |
+| Load balancer picks a backend from the registry | 08, 09, 10 |
 | HTTP server accepts the connection, parses the request | 01 |
-| Rate limiter admits or rejects | 17 |
+| Rate limiter admits or rejects | 20 |
 | Router matches the route | 02 |
 | Middleware: request id, logging, timeout, metrics | 02, 03 |
 | Handler validates the body | 02 |
-| Cache lookup for the product | 06, then 10 |
+| Cache lookup for the product | 07, then 12, 13 |
 | Connection pool hands out a connection | 04 |
-| Transaction: check stock, decrement, insert order | 02, then 05 |
-| Job enqueued for payment | 12 |
+| Driver speaks the Postgres protocol | 05 |
+| Transaction: check stock, decrement, insert order | 02, then 06 |
+| Job enqueued for payment | 15 |
 | Response written, metrics recorded | 01, 03 |
 
 ## Steps
@@ -36,9 +37,9 @@ Not built. A domain pointed at the `app` droplet. Nothing to learn here that a s
 TCP is the `net` package, the OS does the work. TLS is `crypto/tls` with a Let's Encrypt cert. Writing
 TLS is cryptography, not backend engineering.
 
-### Load balancer
+### Load balancer and registry
 
-Scenarios 07 and 08.
+Scenarios 08, 09 and 10.
 
 ### HTTP server
 
@@ -49,7 +50,7 @@ timeouts so a slow client can't hold a connection forever. HTTP/1.1 only, no HTT
 
 ### Rate limiter
 
-Scenario 17.
+Scenario 20.
 
 ### Router
 
@@ -65,19 +66,23 @@ Scenario 02.
 
 ### Cache
 
-Scenario 06, then 10 when it moves out of process.
+Scenario 07, then 12 when it moves out of process, 13 when it gets a replica.
 
 ### Connection pool
 
 Scenario 04.
 
+### Driver
+
+Scenario 05.
+
 ### Transaction
 
-Scenario 02, revisited in 05.
+Scenario 02, revisited in 06.
 
 ### Queue
 
-Scenario 12.
+Scenario 15.
 
 ### Response and metrics
 

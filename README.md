@@ -38,11 +38,13 @@ it down, note what I skipped, and move on.
 ## Rules
 
 - Go standard library for primitives (`net`, `bufio`, `io`, `os`, `sync`, `encoding/json`, `crypto/tls`)
-  and `pgx` for Postgres. Not `net/http`. Anything that is a component, I write. Anything else I pull in
-  needs an ADR explaining why.
+  and `pgx` for Postgres until scenario 05 replaces it. Not `net/http`. Anything that is a component, I
+  write. Anything else I pull in needs an ADR explaining why.
 - Build a component when a scenario makes me need it, not before.
 - Some things I'm not building: TLS, DNS, TCP, the database that holds orders (that stays Postgres),
-  and Kubernetes. Kubernetes is where I stop building and learn to run things instead.
+  Kubernetes, and the measuring stick on `world` (Prometheus, Grafana, k6). Kubernetes is where I stop
+  building and learn to run things instead. The measuring stick stays independent or the numbers mean
+  nothing.
 - Side quests are fine if they're bounded. Writing a database engine is not bounded, so no.
 - No AI anywhere near `app/`. No completion, no generated code, no "fix this". Docs, books and library
   source are fine. Stack Overflow after I've been stuck for 20 minutes.
@@ -70,28 +72,32 @@ The order is driven by need. A component shows up in the week its absence starts
 | 02 | It's supposed to be a store | Project layout, routing, Postgres, migrations | Router, middleware, config, migrations |
 | 03 | We can't see anything | Percentiles, labels, cardinality, structured logs, a dashboard | Metrics endpoint, logger |
 | 04 | 10× surge at drop time | Pool sizing, indexes, timeouts, limits | Connection pool |
-| 05 | Stock went negative | Transactions, isolation, locking, idempotency | |
-| 06 | Thundering herd on the hot product | Caching, TTLs, stampedes, coalescing | In-process cache |
-| 07 | One instance isn't enough | Multiple instances, cache coherence, health checks | Load balancer v1 |
-| 08 | Deploy during a drop | Zero downtime, readiness vs liveness, draining | Load balancer v2 |
-| 09 | Shared cache (two weeks) | Append-only logs, hash index, fsync, crash recovery, compaction | Bitcask-style KV store |
-| 10 | Shared cache, served | Wire protocol, TTL, eviction across instances | Cache server on top of it |
-| 11 | Payment provider gets slow | Timeouts, circuit breakers, bulkheads, fallbacks | |
-| 12 | Checkout takes too long | Async work, acks, retries, dead letters, graceful shutdown | Durable queue, worker |
-| 13 | Search is slow | Pagination, indexes, N+1, query plans | |
-| 14 | The reporting query | Prod vs analytics load, statement timeouts, isolating workloads | |
-| 15 | Reads drown writes | Read replica, read/write split, invalidation | |
-| 16 | Database fails over | Reconnect storms, backoff, jitter, retry budgets | |
-| 17 | Abuse and bots | Rate limiting, per-user limits, backpressure, what 429 means | Rate limiter |
-| 18 | Carts pile up | Background jobs vs live traffic, batching, scheduling | |
-| 19 | Move it to Kubernetes | k3s or a managed cluster, deployments, services, probes. My LB vs an ingress | |
-| 20 | Pods die, node is full | Autoscaling under load, limits, disruption budgets | |
-| 21 | Config and secrets | Rotation without restarts, reload semantics | |
-| 22 | The warehouse feed | Stock changing from a second source while people buy | |
-| 23 | Incident week | Something breaks without warning. Run it, write the postmortem | |
-| 24 | Wrap up | Finish the lifecycle doc, load report, maybe a blog post | |
+| 05 | The last dependency | Postgres wire protocol, SCRAM auth, extended query, type decoding | Postgres driver, `pgx` removed |
+| 06 | Stock went negative | Transactions, isolation, locking, idempotency | |
+| 07 | Thundering herd on the hot product | Caching, TTLs, stampedes, coalescing | In-process cache |
+| 08 | One instance isn't enough | Multiple instances, cache coherence, health checks | Load balancer v1 |
+| 09 | Backends come and go | Discovery, heartbeats, membership, stale entries | Service registry |
+| 10 | Deploy during a drop | Zero downtime, readiness vs liveness, draining, rollback | Deploy tool, load balancer v2 |
+| 11 | Shared cache (two weeks) | Append-only logs, hash index, fsync, crash recovery, compaction | Bitcask-style KV store |
+| 12 | Shared cache, served | Wire protocol, TTL, eviction across instances | Cache server on top of it |
+| 13 | The cache node died | Leader and follower, log shipping, catch-up, failover without consensus | KV replication |
+| 14 | Payment provider gets slow | Timeouts, circuit breakers, bulkheads, fallbacks | |
+| 15 | Checkout takes too long | Async work, acks, retries, dead letters, graceful shutdown | Durable queue, worker |
+| 16 | Search is slow | Tokenising, inverted index, ranking, index updates on stock change | Search index |
+| 17 | The reporting query | Prod vs analytics load, statement timeouts, isolating workloads | |
+| 18 | Reads drown writes | Read replica, read/write split, invalidation | |
+| 19 | Database fails over | Reconnect storms, backoff, jitter, retry budgets | |
+| 20 | Abuse and bots | Rate limiting, per-user limits, backpressure, what 429 means | Rate limiter |
+| 21 | Carts pile up | Background jobs vs live traffic, batching, scheduling | Job scheduler |
+| 22 | What's in a container | Namespaces, cgroups, rootfs, what Docker actually does | Mini container runtime |
+| 23 | Move it to Kubernetes | k3s or a managed cluster, deployments, services, probes. My LB vs an ingress | |
+| 24 | Pods die, node is full | Autoscaling under load, limits, disruption budgets | |
+| 25 | Config and secrets | Rotation without restarts, reload semantics | |
+| 26 | The warehouse feed | Stock changing from a second source while people buy | |
+| 27 | Incident week | Something breaks without warning. Run it, write the postmortem | |
+| 28 | Wrap up | Finish the lifecycle doc, load report, maybe a blog post | |
 
-Roughly 26 weeks of work if I did one a week. I won't, so it'll take longer.
+Roughly 30 weeks of work if I did one a week. I won't, so it'll take longer.
 
 ## Who writes where
 
